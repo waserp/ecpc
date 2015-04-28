@@ -4,6 +4,8 @@ using namespace std;
 
 #include "CECCFChannel.h"
 #include "CSelect.h"
+#include "CClientSocket.h"
+
 const uint32_t cdi = 0x101605;
 
 

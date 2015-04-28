@@ -75,6 +75,9 @@ class CBuffer
     /// @return if readpointer is at begin
     bool IsReadPointerZero();
 
+    /// @return pointer to Data
+    uint8_t* GetDataPointer();
+
     /// pointer to the next
     CBuffer* m_next;
     CBuffer* m_prev;

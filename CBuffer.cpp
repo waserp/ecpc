@@ -44,6 +44,9 @@ CBuffer::~CBuffer()
 {
 }
 
+
+uint8_t* CBuffer::GetDataPointer() { return &m_data[0]; }
+
 void CBuffer::PutUint8(uint8_t p_b)
 {
  if (m_wp >= ecpcbuffersize) {

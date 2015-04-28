@@ -18,7 +18,7 @@ enum EWaitFor {
 class Iselect {
   public :
     /// @return the filedescriptor
-    virtual uint32_t Getfd(void) = 0;
+    virtual int Getfd(void) = 0;
 
     /// This callback is called when the corresponding socket
     /// has data to read.
