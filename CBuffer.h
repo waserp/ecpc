@@ -50,9 +50,18 @@ class CBuffer
     /// read byte from buffer
     /// @return byte read
     uint8_t GetUint8();
+    /// @param[in] p_pos position
+    /// read byte from buffer
+    /// @return byte read
+    uint8_t GetUint8(uint32_t p_pos);
+
     /// read word from buffer
     /// @return word read
     uint16_t GetUint16();
+    /// read word from buffer
+    /// @param[in] p_pos position
+    /// @return word read
+    uint16_t GetUint16(uint32_t p_pos);
     /// read long word from buffer
     /// @return long word read
     uint32_t GetUint32();
@@ -78,6 +87,9 @@ class CBuffer
     /// @return pointer to Data
     uint8_t* GetDataPointer();
 
+    /// @return pointer to Data at write position
+    uint8_t* GetDataPointerWritePos();
+
     /// pointer to the next
     CBuffer* m_next;
     CBuffer* m_prev;
@@ -96,8 +108,8 @@ class CBuffer
   private:
     /// is true if read more data than available
     bool   m_OverRead;
-	/// is true if tried to write beond buffer size
-	bool   m_Overflow;
+    /// is true if tried to write beond buffer size
+    bool   m_Overflow;
     /// read pointer, points to the next byte to read
     uint32_t m_rp;
     /// write pointer, points to the next byte to write to

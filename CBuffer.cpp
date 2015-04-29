@@ -47,6 +47,8 @@ CBuffer::~CBuffer()
 
 uint8_t* CBuffer::GetDataPointer() { return &m_data[0]; }
 
+uint8_t* GetDataPointerWritePos() { return &m_data[wp]; }
+
 void CBuffer::PutUint8(uint8_t p_b)
 {
  if (m_wp >= ecpcbuffersize) {
@@ -105,6 +107,22 @@ uint8_t CBuffer::GetUint8()
 uint16_t CBuffer::GetUint16()
 {
   return (GetUint8() + (GetUint8() << 8));
+}
+
+uint16_t GetUint16(uint32_t p_pos)
+{
+  if ((p_pos + 1) >= m_wp) {
+    //throw
+  }
+  return ((m_data[p_pos] & 0xFF) + ((m_data[p_pos + 1] << 8) & 0xFF00));
+}
+
+uint16_t GetUint8(uint32_t p_pos)
+{
+  if ((p_pos) >= m_wp) {
+    //throw
+  }
+  return (m_data[p_pos] & 0xFF);
 }
 
 uint32_t CBuffer::GetUint32(void)
