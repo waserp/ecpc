@@ -21,6 +21,7 @@
 
 const uint32_t ecpcbuffersize = 300;
 
+
 class CBuffer
 {
   public :
@@ -89,6 +90,18 @@ class CBuffer
 
     /// @return pointer to Data at write position
     uint8_t* GetDataPointerWritePos();
+
+    /// this method always swaps the endiannes in contrast to the ntoh i.e.
+    /// @param[in] p_val value
+    /// @return p_val with swaped endiannes
+    static uint16_t SwapEndiann(uint16_t p_val) {return (((p_val >> 8) & 0xFF) | ((p_val << 8) & 0xFF00));}
+
+    /// this method always swaps the endiannes in contrast to the ntoh i.e.
+    /// @param[in] p_val value
+    /// @return p_val with swaped endiannes
+    static uint32_t SwapEndiann(uint32_t p_val) {return (  ((p_val >> 24) & 0xFF) | ((p_val >> 8) & 0xFF00) | ((p_val << 8) & 0xFF0000) | ((p_val << 24) & 0xFF000000) );}
+
+
 
     /// pointer to the next
     CBuffer* m_next;

@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include "CBuffer.h"
 #include "BCFConstants.h"
+#include "CClientSocket.h"
 //#include <stdio.h>
 
 /// This class creates BCF frames from MSCF data and vice versa for one channel
@@ -16,6 +17,8 @@ class CECCFChannel {
   public:
     /// @param[in] p_cdi CDI of the communication channel
     CECCFChannel(uint32_t p_cdi);
+
+    ~CECCFChannel(void);
 
     /// @param[in] p_buffer buffer to send
     void SendBuffer(CBuffer& p_buffer);
@@ -41,11 +44,6 @@ class CECCFChannel {
     /// @return the device id of this object
     uint8_t GetDevice(){return (m_cdi & 0xFF);}
 
-    /// this method always swaps the endiannes in contrast to the ntoh i.e.
-    /// @param[in] p_val value
-    /// @return p_val with swaped endiannes
-    uint16_t SwapEndiann(uint16_t p_val) {return (((p_val >> 8) & 0xFF) | ((p_val << 8) & 0xFF00));}
-
     void SendToSocket(CBuffer& p_SocketData);
 
     uint32_t m_cdi;
@@ -56,13 +54,21 @@ class CECCFChannel {
     CBuffer  m_ECCFRecoBuf;
     CBuffer  m_MSCFRecoBuf;
 
+    CClientSocket m_Socket;
+
+
 };
 
 
 
 CECCFChannel::CECCFChannel(uint32_t p_cdi) :
- m_cdi(p_cdi) , m_connected(false), m_ChannelType(ECCFTypeMSCFLo), m_ECCFframing(0) {}
+ m_cdi(p_cdi) , m_connected(false), m_ChannelType(ECCFTypeMSCFLo), m_ECCFframing(0) {
+   m_Socket.Open(p_cdi,CClientSocket::eSTBCI);
 
+ }
+CECCFChannel::~CECCFChannel(void) {
+   m_Socket.Close();
+}
 
 void CECCFChannel::UnpackECCFs(void) {
   while (m_ECCFRecoBuf.GetRemaining() > MSCFHeaderLength) {
@@ -85,7 +91,7 @@ void CECCFChannel::UnpackECCFs(void) {
 
 void CECCFChannel::ExtractBCF(CBuffer& p_buffer) {
   (void) p_buffer.GetUint8();  // ignore type for now
-  uint16_t bcflen = SwapEndiann(p_buffer.GetUint16()); // read length
+  uint16_t bcflen = CBuffer::SwapEndiann(p_buffer.GetUint16()); // read length
   uint8_t bcfFram = p_buffer.GetUint8(); // BCF Framing
   if ((bcfFram & CommFrameStartFlag) == CommFrameStartFlag) {
     m_ECCFRecoBuf.Clear();
@@ -143,10 +149,12 @@ void CECCFChannel::SendBuffer(CBuffer& p_buffer) {
       BCFframing |= CommFrameEndFlag;
     }
     OutBuffer.PutUint8(BCFType,BCFPosType);
-    OutBuffer.PutUint16(SwapEndiann(OutBuffer.GetRemaining() - BCFHeaderLength),BCFPosLength); // write BCI Framelength to buffer
+    uint16_t payloadlength = OutBuffer.GetRemaining() - BCFHeaderLength;
+    OutBuffer.PutUint16(CBuffer::SwapEndiann(payloadlength),BCFPosLength); // write BCI Framelength to buffer
     OutBuffer.PutUint8(BCFframing,BCFPosFraming);
     // send OutBuffer to socket
     //OutBuffer.dump();
+    m_Socket.Send(OutBuffer);
     printf("decode\n");
     //ExtractBCF(OutBuffer); // just testing
 

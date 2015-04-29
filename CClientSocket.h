@@ -13,12 +13,19 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
+#include "CSelect.h"
 
 #include "CBuffer.h"
 
 
 class CClientSocket : public Iselect {
   public :
+
+    enum eSocketType {
+      eSTBCI = 0 /// Sockettype BCI
+    };
+
+
     /// constructor
     CClientSocket(void);
     /// destructor
@@ -29,17 +36,22 @@ class CClientSocket : public Iselect {
     /// has data to read.
     virtual void DataToRead(void);
     /// Open the socket
-    void Open(void);
+    /// @param[in] p_SocketType Sockettype
+    /// @param[in] p_id Identifier of the communication channel
+    void Open(uint32_t p_id, eSocketType p_SocketType);
     /// Close the socket
     void Close(void);
 
     /// @param[in] p_Buffer buffer with data to send
     void Send(CBuffer& p_Buffer);
+
   private :
 
     bool ReadnBytes(uint32_t p_n);
 
     uint32_t ReadLength();      /// reads big endian!
+
+    void SetSocketTypeParameter(eSocketType p_SocketType);
 
 
     int         m_SocketFD;     /// File descriptor
@@ -48,11 +60,10 @@ class CClientSocket : public Iselect {
     uint32_t    m_HeaderLength; /// number of bytes in header
     uint32_t    m_LengthPos;    /// first byte of length
     uint32_t    m_LengthSize;   /// number of length bytes
-
     CBuffer     m_RecBuffer;    /// Receive Buffer
 };
 
-CClientSocket::CClientSocket(void) : m_isopen(false), m_State(ERSinactive) {
+CClientSocket::CClientSocket(void) : m_isopen(false) {
   m_RecBuffer.Clear();
 }
 
@@ -60,7 +71,20 @@ CClientSocket::~CClientSocket(void) {
   if (m_isopen) Close();
 }
 
-void CClientSocket::Open(void) {
+void CClientSocket::SetSocketTypeParameter(eSocketType p_SocketType){
+  switch (p_SocketType) {
+    case eSTBCI :
+      m_LengthPos = BCFPosLength;
+      m_LengthSize = BCFLengthSize;
+      m_HeaderLength = BCFHeaderLength;
+    break;
+    default: // throw
+    break;
+  }
+}
+
+void CClientSocket::Open(uint32_t p_id, eSocketType p_SocketType) {
+  SetSocketTypeParameter(p_SocketType);
   assert((m_SocketFD = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0)) != -1);  // create Socket FD
   memset(&m_remote, 0, sizeof(m_remote));               // clean address structure
   m_remote.sun_family = AF_UNIX;
@@ -69,7 +93,20 @@ void CClientSocket::Open(void) {
     printf("connect() failed\n");
     return;
   }
+  uint32_t idNot = CBuffer::SwapEndiann(p_id);
+  printf(" id = %x %x \n",p_id,idNot);
   m_isopen = true;
+  m_RecBuffer.Clear();  // initmessage
+  m_RecBuffer.PutUint8(1); // version
+  m_RecBuffer.PutUint8(42); // type
+  m_RecBuffer.PutUint32(CBuffer::SwapEndiann(p_id));  // swap
+  m_RecBuffer.PutUint32(CBuffer::SwapEndiann(m_HeaderLength)); // header length
+  m_RecBuffer.PutUint32(CBuffer::SwapEndiann(m_LengthPos)); // position of length information in header
+  m_RecBuffer.PutUint32(CBuffer::SwapEndiann(m_HeaderLength)); // offset of application data
+  m_RecBuffer.PutUint32(CBuffer::SwapEndiann(BCFChunckSize)); // chunck size
+  m_RecBuffer.PutUint32(CBuffer::SwapEndiann(BCFPadding)); // reserved
+  Send(m_RecBuffer);
+  m_RecBuffer.Clear();
 }
 
 bool CClientSocket::ReadnBytes(uint32_t p_n)
@@ -79,7 +116,7 @@ bool CClientSocket::ReadnBytes(uint32_t p_n)
   if (nbytes < 0) {
     // throw
   }
-  if (nbytes == p_n) return true;
+  if ((uint32_t) nbytes == p_n) return true;
   return false;
 }
 
@@ -94,7 +131,8 @@ uint32_t CClientSocket::ReadLength()  /// reads big endian!
 }
 
 void CClientSocket::DataToRead(void) {
-  if ((uint32_t curcnt = m_RecBuffer.GetRemaining()) < m_HeaderLength) {
+  uint32_t curcnt = 0;
+  if ((curcnt = m_RecBuffer.GetRemaining()) < m_HeaderLength) {
     if (ReadnBytes(m_HeaderLength - curcnt) == false) return;
   }
   if (ReadnBytes(ReadLength() - m_RecBuffer.GetRemaining()) == false) return;
@@ -103,6 +141,7 @@ void CClientSocket::DataToRead(void) {
 }
 
 void CClientSocket::Send(CBuffer& p_Buffer) {
+  p_Buffer.dump();
   write(m_SocketFD, p_Buffer.GetDataPointer(), p_Buffer.GetRemaining());
 }
 
